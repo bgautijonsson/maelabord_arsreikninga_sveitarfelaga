@@ -1,0 +1,1 @@
+# maelabord_arsreikninga_sveitarfelaga
