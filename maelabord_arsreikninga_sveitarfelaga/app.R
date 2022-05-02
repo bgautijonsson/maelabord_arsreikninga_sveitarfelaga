@@ -21,6 +21,7 @@ library(here)
 library(readxl)
 library(janitor)
 library(plotly)
+library(DT)
 
 d <- read_csv("arsreikningagogn.csv") 
 
@@ -81,9 +82,13 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                       choices = c("Verðlag hvers árs", "Verðlag 2021"),
                                       selected = "Verðlag 2021"
                                   ),
-                                  actionButton(
-                                      inputId = "goButton",
-                                      label = "Sækja myndrit"
+                                  div(
+                                      actionButton(
+                                          inputId = "goButton",
+                                          label = "Sækja gögn",
+                                          width = "120px"
+                                      ),
+                                      class = "center", align = "middle"
                                   ), 
                                   br(" "),
                                   br(" "),
@@ -93,7 +98,12 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                               ),
                               
                               mainPanel(
-                                  plotOutput("plot", height = 500)
+                                  tabsetPanel(
+                                      type = "tabs",
+                                      tabPanel("Myndrit", plotOutput("throun_plot", height = 500)),
+                                      tabPanel("Tafla", DTOutput("throun_tafla"))
+                                  )
+                                  
                               )
                           )
                  ),
@@ -102,6 +112,7 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                           
                           sidebarLayout(
                               sidebarPanel(
+                                  width = 3,
                                   selectInput(
                                       inputId = "vidmid",
                                       label = "Sveitarfélag til viðmiðunar",
@@ -138,9 +149,13 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                       ),
                                       selected = c("Skuldaaukning á kjörtímabili (leiðrétt fyrir verðbólgu)")
                                   ),
-                                  actionButton(
-                                      inputId = "goButton_distribution",
-                                      label = "Sækja myndrit"
+                                  div(
+                                      actionButton(
+                                          inputId = "goButton_distribution",
+                                          label = "Sækja gögn",
+                                          width = "120px"
+                                      ),
+                                      class = "center", align = "middle"
                                   ),
                                   br(" "),
                                   br(" "),
@@ -154,7 +169,10 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                               mainPanel(
                                   h3("Tölur miða við síðasta aðgengilega ársreikning sveitarfélags"),
                                   br(" "),
-                                  plotOutput("plot_distribution", height = 1000, width = "80%")
+                                  tabsetPanel(
+                                      tabPanel("Myndrit", plotOutput("dreifing_plot", height = 1000, width = "100%")),
+                                      tabPanel("Tafla", DTOutput("dreifing_tafla"))
+                                  )
                               )
                           )
                           
@@ -163,6 +181,7 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                           
                           sidebarLayout(
                               sidebarPanel(
+                                  width = 3,
                                   selectInput(
                                       inputId = "sveitarfelag_vidmid",
                                       label = "Sveitarfélag",
@@ -178,9 +197,13 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                       choices = c("A-hluti", "A og B-hluti"),
                                       selected = c("A-hluti")
                                   ),
-                                  actionButton(
-                                      inputId = "goButton_vidmid",
-                                      label = "Sækja myndrit"
+                                  div(
+                                      actionButton(
+                                          inputId = "goButton_vidmid",
+                                          label = "Sækja gögn",
+                                          width = "120px"
+                                      ),
+                                      class = "center", align = "middle"
                                   ),
                                   br(" "),
                                   br(" "),
@@ -202,7 +225,9 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
 
 server <- function(input, output) {
     
-    my_plot <- eventReactive(input$goButton, {
+    #### Þróun ####
+    
+    throun_df <- eventReactive(input$goButton, {
         
         
         y_vars <- list(
@@ -221,6 +246,50 @@ server <- function(input, output) {
             "Veltufé frá rekstri sem hlutfall af tekjum" = "veltufe_hlutf_tekjur",
             "Veltufjárhlutfall" = "veltufjarhlutfall"
         )
+        
+        my_functions <- list(
+            "Skuldir per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
+                                        function(data) data,  
+                                        function(data) data |> mutate(y = y / visitala_2021)),
+            "Skuldaaukning" = ifelse(input$verdlag == "Verðlag hvers árs",
+                                     function(data) data |> group_by(sveitarfelag) |> mutate(y = (y + 1) / (y[ar == input$ar_fra] + 1) - 1) |> ungroup(),
+                                     function(data) data |> group_by(sveitarfelag) |> mutate(y = ((y + 1) / visitala_2021) / ((y[ar == input$ar_fra] + 1) / visitala_2021[ar == input$ar_fra]) - 1) |> ungroup()),
+            "Handbært fé per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
+                                            function(data) data,  
+                                            function(data) data |> mutate(y = y / visitala_2021)),
+            "Nettó jöfnunarsjóðsframlög per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
+                                                           function(data) data,  
+                                                           function(data) data |> mutate(y = y / visitala_2021)),
+            "Útsvar og fasteignaskattur per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
+                                                           function(data) data,  
+                                                           function(data) data |> mutate(y = y / visitala_2021))
+        )
+        
+        y_var <- y_vars[[input$y_var]]
+        
+        
+        
+        
+        
+        plot_dat <- d |> 
+            filter(hluti %in% input$hluti, sveitarfelag %in% input$sveitarfelag, ar >= input$ar_fra) |> 
+            select(ar, sveitarfelag, y = all_of(y_var), visitala_2021) |> 
+            mutate(x = ar)
+        
+        
+        if (!is.null(my_functions[[input$y_var]])) {
+            plot_dat <- plot_dat |> 
+                my_functions[[input$y_var]]()
+        }
+        
+        plot_dat
+        
+    }) 
+    
+    throun_plot <- eventReactive(input$goButton, {
+        
+        
+        
         
         y_scales <- list(
             "Eiginfjárhlutfall" = scale_y_continuous(labels = label_percent(), breaks = seq(0, 1, by = 0.25), expand = expansion()),
@@ -291,39 +360,8 @@ server <- function(input, output) {
         )
         
         
+        plot_dat <- throun_df()
         
-        y_var <- y_vars[[input$y_var]]
-        
-        my_functions <- list(
-            "Skuldir per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
-                                        function(data) data,  
-                                        function(data) data |> mutate(y = y / visitala_2021)),
-            "Skuldaaukning" = ifelse(input$verdlag == "Verðlag hvers árs",
-                                     function(data) data |> group_by(sveitarfelag) |> mutate(y = (y + 1) / (y[ar == input$ar_fra] + 1) - 1) |> ungroup(),
-                                     function(data) data |> group_by(sveitarfelag) |> mutate(y = ((y + 1) / visitala_2021) / ((y[ar == input$ar_fra] + 1) / visitala_2021[ar == input$ar_fra]) - 1) |> ungroup()),
-            "Handbært fé per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
-                                            function(data) data,  
-                                            function(data) data |> mutate(y = y / visitala_2021)),
-            "Nettó jöfnunarsjóðsframlög per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
-                                                           function(data) data,  
-                                                           function(data) data |> mutate(y = y / visitala_2021)),
-            "Útsvar og fasteignaskattur per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
-                                                           function(data) data,  
-                                                           function(data) data |> mutate(y = y / visitala_2021))
-        )
-        
-        
-        
-        plot_dat <- d |> 
-            filter(hluti %in% input$hluti, sveitarfelag %in% input$sveitarfelag, ar >= input$ar_fra) |> 
-            select(ar, sveitarfelag, y = all_of(y_var), visitala_2021) |> 
-            mutate(x = ar)
-        
-        
-        if (!is.null(my_functions[[input$y_var]])) {
-            plot_dat <- plot_dat |> 
-                my_functions[[input$y_var]]()
-        }
         
         
         coords <- list(
@@ -353,12 +391,74 @@ server <- function(input, output) {
         p
     })
     
-    output$plot <- renderPlot({
-        my_plot()
+    throun_tafla <- eventReactive(input$goButton, {
+        
+        
+        
+        my_digits <- list(
+            "Eiginfjárhlutfall" = 2,
+            "Framlegð sem hlutfall af tekjum" = 2,
+            "Handbært fé per íbúi" = 0,
+            "Jöfnunarsjóðsframlög per íbúi" = 0,
+            "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = 2,
+            "Nettó jöfnunarsjóðsframlög per íbúi" = 0,
+            "Rekstrarniðurstaða sem hlutfall af tekjum" = 2,
+            "Skuldir per íbúi"  = 0,
+            "Skuldir sem hlutfall af tekjum" = 2,
+            "Skuldaaukning" = 3,
+            "Skuldahlutfall" = 2,
+            "Útsvar og fasteignaskattur per íbúi" = 0,
+            "Veltufé frá rekstri sem hlutfall af tekjum" = 2,
+            "Veltufjárhlutfall" = 2
+        )
+        
+        if (is.null(my_digits[[input$y_var]])) my_digits[[input$y_var]] <- 0
+        
+        table_dat <- throun_df() |> 
+            select(-visitala_2021, -x) |> 
+            select(Ár = ar, sveitarfelag, y) |> 
+            mutate(y = round(y, digits = my_digits[[input$y_var]])) |> 
+            pivot_wider(names_from = sveitarfelag, values_from = y)
+        
+        caption <- str_c(input$y_var, " (", input$verdlag, ")")
+        
+        datatable(
+            table_dat,
+            extensions = "Buttons",
+            rownames = FALSE,
+            caption = caption,
+            options = list(
+                dom = "Bfrtip",
+                buttons = c("csv", "excel", "pdf"),
+                pageLength = 20,
+                lengthChange = FALSE,
+                searching = FALSE,
+                language = list(
+                    decimal = ",",
+                    thousands = ".",
+                    url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Icelandic.json'
+                )
+            )
+        )
+        
+    })
+    
+    output$throun_plot <- renderPlot({
+        throun_plot()
+    })
+    
+    output$throun_tafla <- renderDT({
+        
+        throun_tafla()
     })
     
     
-    my_plot_distribution <- reactive({
+    #### Dreifing ####
+    
+    dreifing_df <- reactive({
+        
+        req(input$y_var_distribution)
+        
         y_vars <- list(
             "Eiginfjárhlutfall" = "eiginfjarhlutfall",
             "Framlegð per íbúi (kjörtímabil í heild)" = "framlegd_per_ibui_kjortimabil",
@@ -377,6 +477,36 @@ server <- function(input, output) {
             "Veltufé frá rekstri sem hlutfall af tekjum" = "veltufe_hlutf_tekjur",
             "Veltufjárhlutfall" = "veltufjarhlutfall"
         )
+        
+        
+        y_var <- y_vars[[input$y_var_distribution]]
+        
+        plot_dat <- d |> 
+            group_by(sveitarfelag) |> 
+            filter(ar == max(ar), hluti == input$hluti_distribution) |> 
+            ungroup() |> 
+            select(sveitarfelag, ar, y = all_of(y_var)) |> 
+            drop_na(y) 
+        
+        plot_dat
+        
+    }) |> 
+        bindEvent(input$goButton_distribution)
+    
+    dreifing_plot <- reactive({
+        
+        plot_dat <- dreifing_df() |> 
+            mutate(my_colour = 1 * (sveitarfelag %in% input$vidmid) + 2 * (sveitarfelag == "Heild"),
+                   # sveitarfelag = ifelse(my_colour == 1, 
+                   #                       str_c("<b style='color:#2171b5'>", sveitarfelag, " (Til ", ar, ")", "</b>"), 
+                   #                       ifelse(sveitarfelag == "Heild",
+                   #                              "<b style='color:#b2182b'>", sveitarfelag, " (Til ", ar, ")", "</b>",
+                   #                              str_c(sveitarfelag, " (Til ", ar, ")"))
+                   #                       ), 
+                   sveitarfelag = case_when(sveitarfelag == input$vidmid ~ str_c("<b style='color:#2171b5'>", sveitarfelag, " (Til ", ar, ")", "</b>"),
+                                            sveitarfelag == "Heild" ~ str_c("<b style='color:#b2182b'>", sveitarfelag, " (Til ", ar, ")", "</b>"),
+                                            TRUE ~ str_c(sveitarfelag, " (Til ", ar, ")")),
+                   sveitarfelag = fct_reorder(sveitarfelag, y))
         
         x_scales <- list(
             "Eiginfjárhlutfall" = scale_x_continuous(labels = label_percent()),
@@ -413,25 +543,7 @@ server <- function(input, output) {
         
         
         
-        y_var <- y_vars[[input$y_var_distribution]]
         
-        plot_dat <- d |> 
-            group_by(sveitarfelag) |> 
-            filter(ar == max(ar), hluti == input$hluti_distribution) |> 
-            ungroup() |> 
-            select(sveitarfelag, ar, y = all_of(y_var)) |> 
-            drop_na(y) |> 
-            mutate(my_colour = 1 * (sveitarfelag %in% input$vidmid) + 2 * (sveitarfelag == "Heild"),
-                   # sveitarfelag = ifelse(my_colour == 1, 
-                   #                       str_c("<b style='color:#2171b5'>", sveitarfelag, " (Til ", ar, ")", "</b>"), 
-                   #                       ifelse(sveitarfelag == "Heild",
-                   #                              "<b style='color:#b2182b'>", sveitarfelag, " (Til ", ar, ")", "</b>",
-                   #                              str_c(sveitarfelag, " (Til ", ar, ")"))
-                   #                       ), 
-                   sveitarfelag = case_when(sveitarfelag == input$vidmid ~ str_c("<b style='color:#2171b5'>", sveitarfelag, " (Til ", ar, ")", "</b>"),
-                                            sveitarfelag == "Heild" ~ str_c("<b style='color:#b2182b'>", sveitarfelag, " (Til ", ar, ")", "</b>"),
-                                            TRUE ~ str_c(sveitarfelag, " (Til ", ar, ")")),
-                   sveitarfelag = fct_reorder(sveitarfelag, y))
         
         vlines <- list(
             "Eiginfjárhlutfall" = 0,
@@ -471,6 +583,7 @@ server <- function(input, output) {
             "Veltufé frá rekstri sem hlutfall af tekjum"  = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Veltufjárhlutfall" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3)
         )
+        
         
         
         
@@ -514,9 +627,82 @@ server <- function(input, output) {
         bindCache(input$y_var_distribution, input$hluti_distribution, input$vidmid) |> 
         bindEvent(input$goButton_distribution)
     
-    output$plot_distribution <- renderPlot({
-        my_plot_distribution()
+    output$dreifing_plot <- renderPlot({
+        dreifing_plot()
     })
+    
+    dreifing_tafla <- eventReactive(input$goButton_distribution, {
+        
+        
+        
+        my_digits <- list(
+            "Eiginfjárhlutfall" = 2,
+            "Framlegð per íbúi (kjörtímabil í heild)" = 0,
+            "Framlegð sem hlutfall af tekjum (kjörtímabil í heild)" = 2,
+            "Handbært fé per íbúi" = 0,
+            "Jöfnunarsjóðsframlög per íbúi" = 0,
+            "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = 2,
+            "Nettó jöfnunarsjóðsframlög per íbúi" = 0,
+            "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)" = 0,
+            "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)" = 2,
+            "Útsvar og fasteignaskattur per íbúi" = 0,
+            "Skuldir per íbúi"  = 0,
+            "Skuldir sem hlutfall af tekjum" = 2,
+            "Skuldaaukning á kjörtímabili (leiðrétt fyrir verðbólgu)" = 3,
+            "Skuldahlutfall" = 2,
+            "Veltufé frá rekstri sem hlutfall af tekjum" = 2,
+            "Veltufjárhlutfall" = 2
+        )
+        
+        if (is.null(my_digits[[input$y_var]])) my_digits[[input$y_var]] <- 0
+        
+        y_name <- input$y_var_distribution
+        
+        table_dat <- dreifing_df() |> 
+            select(sveitarfelag, ar, y) |> 
+            arrange(desc(y)) |> 
+            mutate(y = round(y, digits = my_digits[[input$y_var]])) |> 
+            rename(Sveitarfélag = sveitarfelag, "Síðasti ársreikningur" = ar, !!y_name := y)
+        
+        caption <- str_c(input$y_var_distritubion)
+        
+        datatable(
+            table_dat,
+            extensions = "Buttons",
+            rownames = FALSE,
+            caption = caption,
+            options = list(
+                dom = "Bfrtip",
+                buttons = c("csv", "excel", "pdf"),
+                pageLength = 200,
+                lengthChange = FALSE,
+                searching = FALSE,
+                language = list(
+                    decimal = ",",
+                    thousands = ".",
+                    url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Icelandic.json'
+                )
+            )
+        ) |> 
+            formatStyle(
+                target = 'row', columns = 'Sveitarfélag',  
+                backgroundColor = styleEqual(input$vidmid, c("#2171b5")),
+                color = styleEqual(input$vidmid, "#ffffff")
+            ) |> 
+            formatStyle(
+                target = 'row', columns = 'Sveitarfélag',  
+                backgroundColor = styleEqual("Heild", c("#b2182b")),
+                color = styleEqual("Heild", "#ffffff")
+            )
+        
+    })
+    
+    output$dreifing_tafla <- renderDT({
+        
+        dreifing_tafla()
+    })
+    
+    #### Viðmið ####
     
     my_plot_vidmid <- eventReactive(input$goButton_vidmid, {
         
