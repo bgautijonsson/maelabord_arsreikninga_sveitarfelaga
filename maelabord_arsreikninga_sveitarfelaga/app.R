@@ -52,11 +52,17 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                       choices = c(
                                           "Eiginfjárhlutfall",
                                           "Framlegð sem hlutfall af tekjum",
+                                          "Handbært fé per íbúi",
+                                          "Jöfnunarsjóðsframlög per íbúi",
+                                          "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum",
+                                          "Nettó jöfnunarsjóðsframlög per íbúi",
                                           "Rekstrarniðurstaða sem hlutfall af tekjum",
                                           "Skuldir per íbúi", 
                                           "Skuldir sem hlutfall af tekjum",
-                                          "Skuldaaukning á kjörtímabilinu",
+                                          "Skuldaaukning",
                                           "Skuldahlutfall",
+                                          "Útsvar og fasteignaskattur per íbúi",
+                                          "Veltufé frá rekstri sem hlutfall af tekjum",
                                           "Veltufjárhlutfall"
                                       ),
                                       selected = c("Skuldahlutfall")
@@ -69,6 +75,12 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                       multiple = FALSE, 
                                       selectize = FALSE
                                   ),
+                                  selectInput(
+                                      inputId = "verdlag",
+                                      label = "Verðlag",
+                                      choices = c("Verðlag hvers árs", "Verðlag 2021"),
+                                      selected = "Verðlag 2021"
+                                  ),
                                   actionButton(
                                       inputId = "goButton",
                                       label = "Sækja myndrit"
@@ -76,7 +88,8 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                   br(" "),
                                   br(" "),
                                   h5("Höfundur:"),
-                                  p("Brynjólfur Gauti Guðrúnar Jónsson")
+                                  p("Brynjólfur Gauti Guðrúnar Jónsson"),
+                                  HTML("<a href='https://bggj.shinyapps.io/maelabord_arsreikninga_sveitarfelaga/'> Kóði og gögn </a>")
                               ),
                               
                               mainPanel(
@@ -109,15 +122,21 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                       label = "Myndrit",
                                       choices = c(
                                           "Eiginfjárhlutfall",
+                                          "Handbært fé per íbúi",
+                                          "Jöfnunarsjóðsframlög per íbúi",
+                                          "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum",
+                                          "Nettó jöfnunarsjóðsframlög per íbúi",
                                           "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)",
                                           "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)",
                                           "Skuldir per íbúi", 
                                           "Skuldir sem hlutfall af tekjum",
-                                          "Skuldaaukning (kjörtímabil í heild)",
+                                          "Skuldaaukning á kjörtímabili (leiðrétt fyrir verðbólgu)",
                                           "Skuldahlutfall",
+                                          "Útsvar og fasteignaskattur per íbúi",
+                                          "Veltufé frá rekstri sem hlutfall af tekjum",
                                           "Veltufjárhlutfall"
                                       ),
-                                      selected = c("Skuldaaukning (kjörtímabil í heild)")
+                                      selected = c("Skuldaaukning á kjörtímabili (leiðrétt fyrir verðbólgu)")
                                   ),
                                   actionButton(
                                       inputId = "goButton_distribution",
@@ -126,12 +145,15 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                   br(" "),
                                   br(" "),
                                   h5("Höfundur"),
-                                  h6("Brynjólfur Gauti Guðrúnar Jónsson")
+                                  p("Brynjólfur Gauti Guðrúnar Jónsson"),
+                                  HTML("<a href='https://bggj.shinyapps.io/maelabord_arsreikninga_sveitarfelaga/'> Kóði og gögn </a>")
                                   
                               ),
                               
                               
                               mainPanel(
+                                  h3("Tölur miða við síðasta aðgengilega ársreikning sveitarfélags"),
+                                  br(" "),
                                   plotOutput("plot_distribution", height = 1000, width = "80%")
                               )
                           )
@@ -163,7 +185,8 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                   br(" "),
                                   br(" "),
                                   h5("Höfundur"),
-                                  h6("Brynjólfur Gauti Guðrúnar Jónsson")
+                                  p("Brynjólfur Gauti Guðrúnar Jónsson"),
+                                  HTML("<a href='https://bggj.shinyapps.io/maelabord_arsreikninga_sveitarfelaga/'> Kóði og gögn </a>")
                                   
                               ),
                               
@@ -180,25 +203,44 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
 server <- function(input, output) {
     
     my_plot <- eventReactive(input$goButton, {
+        
+        
         y_vars <- list(
             "Eiginfjárhlutfall" = "eiginfjarhlutfall",
             "Framlegð sem hlutfall af tekjum" = "framlegd_hlutf",
+            "Handbært fé per íbúi" = "handbaert_fe_per_ibui",
+            "Jöfnunarsjóðsframlög per íbúi" = "jofnunarsjodur_a_ibua",
+            "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = "hlutf_jofnunarsjods_skottum",
+            "Nettó jöfnunarsjóðsframlög per íbúi" = "netto_jofnunarsjod_per_ibui",
             "Rekstrarniðurstaða sem hlutfall af tekjum" = "rekstrarnidurstada_hlutf",
             "Skuldir per íbúi"  = "skuldir_per_ibui",
             "Skuldir sem hlutfall af tekjum" = "skuldir_hlutf_tekjur",
-            "Skuldaaukning á kjörtímabilinu" = "skuldaaukning",
+            "Skuldaaukning" = "skuldaaukning",
             "Skuldahlutfall" = "skuldahlutfall",
+            "Útsvar og fasteignaskattur per íbúi" = "skattur_a_ibua",
+            "Veltufé frá rekstri sem hlutfall af tekjum" = "veltufe_hlutf_tekjur",
             "Veltufjárhlutfall" = "veltufjarhlutfall"
         )
         
         y_scales <- list(
             "Eiginfjárhlutfall" = scale_y_continuous(labels = label_percent(), breaks = seq(0, 1, by = 0.25), expand = expansion()),
             "Framlegð sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), expand = expansion()),
+            "Handbært fé per íbúi" = scale_y_continuous(label = label_number(suffix = " kr"), 
+                                                        expand = expansion(mult = 0.005),
+                                                        breaks = c(0, 1e1, 1e2, 1e3, 3e3, 1e4, 3e4, 1e5, 3e5, 1e6, 3e6),
+                                                        limits = c(NA, NA),
+                                                        trans = pseudo_log_trans()),
+            "Jöfnunarsjóðsframlög per íbúi" = scale_y_continuous(label = label_number(suffix = " kr"), limits = c(0, NA), expand = expansion()),
+            "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = scale_y_continuous(labels = label_percent(), limits = c(0, NA), expand = expansion()),
+            "Nettó jöfnunarsjóðsframlög per íbúi" = scale_y_continuous(label = label_number(suffix = " kr")),
             "Rekstrarniðurstaða sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), expand = expansion()),
             "Skuldir per íbúi" = scale_y_continuous(label = label_number(suffix = " kr"), expand = expansion()),
             "Skuldir sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), expand = expansion()),
-            "Skuldaaukning á kjörtímabilinu" = scale_y_continuous(labels = label_percent(), expand = expansion()),
+            "Skuldaaukning" = scale_y_continuous(labels = label_percent(), expand = expansion()),
             "Skuldahlutfall" = scale_y_continuous(labels = label_percent(), breaks = seq(0, 1, by = 0.25), expand = expansion()),
+            "Útsvar og fasteignaskattur per íbúi" =  scale_y_continuous(label = label_number(suffix = " kr"), limits = c(0, NA), expand = expansion()),
+            "Veltufé frá rekstri sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), breaks = pretty_breaks(6),
+                                                                              limits= c(0, NA), expand = expansion()),
             "Veltufjárhlutfall" = scale_y_continuous(labels = label_percent(), expand = expansion())
         )
         
@@ -216,8 +258,7 @@ server <- function(input, output) {
             "Rekstrarniðurstaða sem hlutfall af tekjum" = x_scales_year[[as.character(input$ar_fra)]],
             "Skuldir per íbúi" = x_scales_year[[as.character(input$ar_fra)]],
             "Skuldir sem hlutfall af tekjum" = x_scales_year[[as.character(input$ar_fra)]],
-            "Skuldaaukning á kjörtímabilinu" = scale_x_continuous(breaks = 2018:2021,
-                                                                  limits = c(2018, NA)),
+            "Skuldaaukning" = scale_x_continuous(breaks = 2002:2021, limits = c(NA, NA)),
             "Skuldahlutfall" = x_scales_year[[as.character(input$ar_fra)]],
             "Veltufjárhlutfall" = x_scales_year[[as.character(input$ar_fra)]]
             
@@ -227,20 +268,25 @@ server <- function(input, output) {
         
         
         subtitles <- list(
-            "Eiginfjárhlutfall" = "Eiginfjárhlutfall (100% - skuldahlutfall) sýnir hlutfall eigna sem er fjármagnað með hagnaði og hlutafé (restin eru skuldasöfnun)",
+            "Eiginfjárhlutfall" = "Eiginfjárhlutfall (100% - skuldahlutfall) sýnir hlutfall eigna sem er fjármagnað með hagnaði og hlutafé (restin eru skuldasöfnun).\nHér þýðir 100% að skuldir séu engar og 0% að eigin eignir eru engar.",
             "Framlegð sem hlutfall af tekjum" = "Framlegð er reglulegar tekjur mínus gjöld að frádregnum rekstrargjöldum",
-            "Skuldahlutfall" = "Skuldahlutfall sýnir hve stór hluti heildareigna er fjármagnaður með lánum",
+            "Handbært fé per íbúi" = "Handbært fé er það fé sem sveitarfélög eiga eftir þegar búið er að greiða skuldir og skuldbindingar.\nAthugið að myndin er á lograkvarða (fjarlægð milli 1.000, 10.000 og 100.000 er sú sama)",
+            "Jöfnunarsjóðsframlög per íbúi" = "Peningamagn sem sveitarfélag fær frá jöfnunarsjóð deilt með íbúafjölda.",
+            "Nettó jöfnunarsjóðsframlög per íbúi" = "Framlög frá jöfnunarsjóði að frádregnum útgjöldum til jöfnunarsjóðs deilt með íbúafjölda sveitarfélags",
+            "Skuldahlutfall" = "Skuldahlutfall sýnir hve stór hluti heildareigna er fjármagnaður með lánum.\nHér þýðir 0% að skuldir séu engar og 100% að eigin eignir eru engar.\nOft er sama orðið notað fyrir skuldir sveitarfélaga sem hlutfall af tekjum, en það á ekki við hér.",
             "Veltufjárhlutfall" = "Veltufjárhlutfall er hlutfall skammtímaskulda deilt upp í eignir sem er hægt að nota í að borga í skammtímaskuldir"
         )
         
         hlines <- list(
             "Eiginfjárhlutfall" = c(0, 1),
             "Framlegð sem hlutfall af tekjum" = 0,
+            "Nettó jöfnunarsjóðsframlög per íbúi" = 0,
             "Rekstrarniðurstaða sem hlutfall af tekjum" = 0,
             "Skuldir per íbúi" = NULL,
             "Skuldir sem hlutfall af tekjum" = 1,
-            "Skuldaaukning á kjörtímabilinu" = 0,
+            "Skuldaaukning" = 0,
             "Skuldahlutfall" = c(0, 1),
+            "Veltufé frá rekstri sem hlutfall af tekjum" = 0,
             "Veltufjárhlutfall" = 1
         )
         
@@ -248,10 +294,37 @@ server <- function(input, output) {
         
         y_var <- y_vars[[input$y_var]]
         
+        my_functions <- list(
+            "Skuldir per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
+                                        function(data) data,  
+                                        function(data) data |> mutate(y = y / visitala_2021)),
+            "Skuldaaukning" = ifelse(input$verdlag == "Verðlag hvers árs",
+                                     function(data) data |> group_by(sveitarfelag) |> mutate(y = (y + 1) / (y[ar == input$ar_fra] + 1) - 1) |> ungroup(),
+                                     function(data) data |> group_by(sveitarfelag) |> mutate(y = ((y + 1) / visitala_2021) / ((y[ar == input$ar_fra] + 1) / visitala_2021[ar == input$ar_fra]) - 1) |> ungroup()),
+            "Handbært fé per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
+                                            function(data) data,  
+                                            function(data) data |> mutate(y = y / visitala_2021)),
+            "Nettó jöfnunarsjóðsframlög per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
+                                                           function(data) data,  
+                                                           function(data) data |> mutate(y = y / visitala_2021)),
+            "Útsvar og fasteignaskattur per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
+                                                           function(data) data,  
+                                                           function(data) data |> mutate(y = y / visitala_2021))
+        )
+        
+        
+        
         plot_dat <- d |> 
             filter(hluti %in% input$hluti, sveitarfelag %in% input$sveitarfelag, ar >= input$ar_fra) |> 
-            select(ar, sveitarfelag, y = all_of(y_var)) |> 
+            select(ar, sveitarfelag, y = all_of(y_var), visitala_2021) |> 
             mutate(x = ar)
+        
+        
+        if (!is.null(my_functions[[input$y_var]])) {
+            plot_dat <- plot_dat |> 
+                my_functions[[input$y_var]]()
+        }
+        
         
         coords <- list(
             "Eiginfjárhlutfall" = coord_cartesian(ylim = c(pmin(0, min(plot_dat$y)), pmax(1, max(plot_dat$y)))),
@@ -274,7 +347,8 @@ server <- function(input, output) {
                  y = NULL,
                  col = NULL,
                  title = input$y_var,
-                 subtitle = subtitles[[input$y_var]])
+                 subtitle = subtitles[[input$y_var]],
+                 caption = "Mynd var fengin frá: https://bggj.shinyapps.io/maelabord_arsreikninga_sveitarfelaga/")
         
         p
     })
@@ -284,17 +358,23 @@ server <- function(input, output) {
     })
     
     
-    my_plot_distribution <- eventReactive(input$goButton_distribution, {
+    my_plot_distribution <- reactive({
         y_vars <- list(
             "Eiginfjárhlutfall" = "eiginfjarhlutfall",
             "Framlegð per íbúi (kjörtímabil í heild)" = "framlegd_per_ibui_kjortimabil",
             "Framlegð sem hlutfall af tekjum (kjörtímabil í heild)" = "framlegd_hlutf_kjortimabil",
+            "Handbært fé per íbúi" = "handbaert_fe_per_ibui",
+            "Jöfnunarsjóðsframlög per íbúi" = "jofnunarsjodur_a_ibua",
+            "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = "hlutf_jofnunarsjods_skottum",
+            "Nettó jöfnunarsjóðsframlög per íbúi" = "netto_jofnunarsjod_per_ibui",
             "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)" = "rekstrarnidurstada_per_ibui_kjortimabil",
             "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)" = "rekstrarnidurstada_hlutf_kjortimabil",
+            "Útsvar og fasteignaskattur per íbúi" = "skattur_a_ibua",
             "Skuldir per íbúi"  = "skuldir_per_ibui",
             "Skuldir sem hlutfall af tekjum" = "skuldir_hlutf_tekjur",
-            "Skuldaaukning (kjörtímabil í heild)" = "skuldaaukning",
+            "Skuldaaukning á kjörtímabili (leiðrétt fyrir verðbólgu)" = "skuldaaukning_2021",
             "Skuldahlutfall" = "skuldahlutfall",
+            "Veltufé frá rekstri sem hlutfall af tekjum" = "veltufe_hlutf_tekjur",
             "Veltufjárhlutfall" = "veltufjarhlutfall"
         )
         
@@ -302,20 +382,30 @@ server <- function(input, output) {
             "Eiginfjárhlutfall" = scale_x_continuous(labels = label_percent()),
             "Framlegð per íbúi (kjörtímabil í heild)" = scale_x_continuous(label = label_number(suffix = " kr")),
             "Framlegð sem hlutfall af tekjum (kjörtímabil í heild)" = scale_x_continuous(labels = label_percent()),
+            "Handbært fé per íbúi" = scale_x_continuous(label = label_number(suffix = " kr"), trans = pseudo_log_trans(base = 10),
+                                                        breaks = c(1e1, 1e2, 1e3, 1e4, 1e5, 1e6)),
+            "Jöfnunarsjóðsframlög per íbúi" = scale_x_continuous(label = label_number(suffix = " kr"), limits = c(0, NA), expand = expansion()),
+            "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = scale_x_continuous(labels = label_percent(), limits = c(0, NA), expand = expansion()),
+            "Nettó jöfnunarsjóðsframlög per íbúi" = scale_x_continuous(label = label_number(suffix = " kr")),
             "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)" = scale_x_continuous(label = label_number(suffix = " kr")),
             "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)" = scale_x_continuous(labels = label_percent()),
             "Skuldir per íbúi" = scale_x_continuous(label = label_number(suffix = " kr")),
             "Skuldir sem hlutfall af tekjum" = scale_x_continuous(labels = label_percent()),
-            "Skuldaaukning (kjörtímabil í heild)" = scale_x_continuous(labels = label_percent()),
+            "Skuldaaukning á kjörtímabili (leiðrétt fyrir verðbólgu)" = scale_x_continuous(labels = label_percent()),
             "Skuldahlutfall" = scale_x_continuous(labels = label_percent()),
+            "Útsvar og fasteignaskattur per íbúi" = scale_x_continuous(label = label_number(suffix = " kr")),
+            "Veltufé frá rekstri sem hlutfall af tekjum" = scale_x_continuous(labels = label_percent()),
             "Veltufjárhlutfall" = scale_x_continuous(labels = label_percent())
         )
         
         subtitles <- list(
             "Eiginfjárhlutfall" = "Eiginfjárhlutfall sýnir hlutfall fjármagns sem er í eigu sveitarfélagsins (restin eru skuldir)",
             "Framlegð sem hlutfall af tekjum" = "Framlegð er reglulegar tekjur að frádregnum rekstrargjöldum",
-            "Skuldahlutfall" = "Skuldahlutfall sýnir hve stór hluti heildareigna er fjármagnaður með lánum",
-            "Veltufjárhlutfall" = "Veltufjárhlutfall er hlutfall skammtímaskulda deilt upp í eignir sem er hægt að nota í að borga í skammtímaskuldir"
+            "Handbært fé per íbúi" = "Handbært fé er það fé sem sveitarfélög eiga eftir þegar búið er að greiða skuldir og skuldbindingar",
+            "Nettó jöfnunarsjóðsframlög per íbúi" = "Framlög frá jöfnunarsjóði að frádregnum útgjöldum til jöfnunarsjóðs deilt með íbúafjölda sveitarfélags",
+            "Skuldahlutfall" = "Skuldahlutfall sýnir hve stór hluti heildareigna er fjármagnaður með lánum.\nHér þýðir 0% að skuldir séu engar og 100% að eigin eignir eru engar.\nOft er sama orðið notað fyrir skuldir sveitarfélaga sem hlutfall af tekjum, en það á ekki við hér.",
+            "Veltufjárhlutfall" = "Veltufjárhlutfall er hlutfall skammtímaskulda deilt upp í eignir sem er hægt að nota í að borga í skammtímaskuldir",
+            "Skuldaaukning á kjörtímabili (leiðrétt fyrir verðbólgu)" = "Skuldir eru leiðréttar fyrir vísitölu neysluverðs áður en aukningin er reiknuð"
         )
         
         
@@ -331,10 +421,16 @@ server <- function(input, output) {
             ungroup() |> 
             select(sveitarfelag, ar, y = all_of(y_var)) |> 
             drop_na(y) |> 
-            mutate(my_colour = 1 * (sveitarfelag == input$vidmid),
-                   sveitarfelag = ifelse(my_colour == 1, 
-                                         str_c("<b style='color:#2171b5'>", sveitarfelag, " (Til ", ar, ")", "</b>"), 
-                                         str_c(sveitarfelag, " (Til ", ar, ")")), 
+            mutate(my_colour = 1 * (sveitarfelag %in% input$vidmid) + 2 * (sveitarfelag == "Heild"),
+                   # sveitarfelag = ifelse(my_colour == 1, 
+                   #                       str_c("<b style='color:#2171b5'>", sveitarfelag, " (Til ", ar, ")", "</b>"), 
+                   #                       ifelse(sveitarfelag == "Heild",
+                   #                              "<b style='color:#b2182b'>", sveitarfelag, " (Til ", ar, ")", "</b>",
+                   #                              str_c(sveitarfelag, " (Til ", ar, ")"))
+                   #                       ), 
+                   sveitarfelag = case_when(sveitarfelag == input$vidmid ~ str_c("<b style='color:#2171b5'>", sveitarfelag, " (Til ", ar, ")", "</b>"),
+                                            sveitarfelag == "Heild" ~ str_c("<b style='color:#b2182b'>", sveitarfelag, " (Til ", ar, ")", "</b>"),
+                                            TRUE ~ str_c(sveitarfelag, " (Til ", ar, ")")),
                    sveitarfelag = fct_reorder(sveitarfelag, y))
         
         vlines <- list(
@@ -342,11 +438,17 @@ server <- function(input, output) {
             "Skuldir per íbúi" = 0,
             "Framlegð per íbúi (kjörtímabil í heild)" = 0,
             "Framlegð sem hlutfall af tekjum (kjörtímabil í heild)" = 0,
+            "Handbært fé per íbúi" = 0,
+            "Jöfnunarsjóðsframlög per íbúi" = 0,
+            "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = 0,
+            "Nettó jöfnunarsjóðsframlög per íbúi" = 0,
             "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)" = 0,
             "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)" = 0,
             "Skuldir sem hlutfall af tekjum" = 1,
-            "Skuldaaukning (kjörtímabil í heild)" = 0,
+            "Skuldaaukning á kjörtímabili (leiðrétt fyrir verðbólgu)" = 0,
             "Skuldahlutfall" = 0,
+            "Útsvar og fasteignaskattur per íbúi" = 0,
+            "Veltufé frá rekstri sem hlutfall af tekjum" = 0,
             "Veltufjárhlutfall" = 1
         )
         
@@ -355,12 +457,18 @@ server <- function(input, output) {
             "Eiginfjárhlutfall" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Framlegð per íbúi (kjörtímabil í heild)" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Framlegð sem hlutfall af tekjum (kjörtímabil í heild)" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
+            "Handbært fé per íbúi" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
+            "Jöfnunarsjóðsframlög per íbúi" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
+            "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
+            "Nettó jöfnunarsjóðsframlög per íbúi" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Skuldir per íbúi" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Skuldir sem hlutfall af tekjum" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
-            "Skuldaaukning (kjörtímabil í heild)" = isolate(geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3)),
+            "Skuldaaukning á kjörtímabili (leiðrétt fyrir verðbólgu)" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Skuldahlutfall" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
+            "Útsvar og fasteignaskattur per íbúi" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
+            "Veltufé frá rekstri sem hlutfall af tekjum"  = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Veltufjárhlutfall" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3)
         )
         
@@ -385,8 +493,8 @@ server <- function(input, output) {
             geom_point(aes(col = factor(my_colour), size = factor(my_colour))) +
             segments[[input$y_var_distribution]] +
             x_scales[[input$y_var_distribution]] +
-            scale_colour_manual(values = c("#525252", "#2171b5")) +
-            scale_size_manual(values = c(2, 4)) +
+            scale_colour_manual(values = c("#525252", "#2171b5", "#b2182b")) +
+            scale_size_manual(values = c(2, 4, 4)) +
             my_coords +
             theme_half_open() +
             theme(legend.position = "none",
@@ -396,12 +504,15 @@ server <- function(input, output) {
                  y = NULL,
                  col = NULL,
                  title = input$y_var_distribution,
-                 subtitle = subtitles[[input$y_var_distribution]])
+                 subtitle = subtitles[[input$y_var_distribution]],
+                 caption = "Mynd var fengin frá: https://bggj.shinyapps.io/maelabord_arsreikninga_sveitarfelaga/")
         
         p
         
         
-    })
+    }) |> 
+        bindCache(input$y_var_distribution, input$hluti_distribution, input$vidmid) |> 
+        bindEvent(input$goButton_distribution)
     
     output$plot_distribution <- renderPlot({
         my_plot_distribution()
@@ -434,20 +545,22 @@ server <- function(input, output) {
                                      "Framlegðarhlutfall" = "framlegd",
                                      "Rekstrarniðurstaða" = "rekstrarnidurstada",
                                      "Veltufé frá rekstri\n(hlutfall af tekjum)" = "veltufe",
-                                     "Nettóskuldahlutfall" = "nettoskuldir",
+                                     "Nettóskuldir\n(hlutfall af tekjum)" = "nettoskuldir",
                                      "Veltufjárhlutfall" = "veltufjarhlutfall") |> 
-                       fct_relevel("Nettóskuldahlutfall")) 
+                       fct_relevel("Nettóskuldir\n(hlutfall af tekjum)")) 
         
         
         p <- plot_dat |> 
-            filter(name != "Nettóskuldahlutfall") |> 
+            filter(name != "Nettóskuldir\n(hlutfall af tekjum)") |> 
             ggplot() +
             geom_line(aes(ar, vidmid), lty = 2) +
             geom_point(aes(ar, obs, col = colour)) +
             # geom_line(data = plot_dat |> filter(name == "Nettóskuldahlutfall"), 
             #           aes(ar, vidmid), lty = 2, inherit.aes = FALSE, col = "black") +
-            geom_point(data = plot_dat |> filter(name == "Nettóskuldahlutfall"),
+            geom_point(data = plot_dat |> filter(name == "Nettóskuldir\n(hlutfall af tekjum)"),
                        aes(ar, obs), inherit.aes = FALSE, col = "black") + 
+            geom_line(data = plot_dat |> filter(name == "Nettóskuldir\n(hlutfall af tekjum)"),
+                      aes(ar, obs), inherit.aes = FALSE, col = "black") + 
             scale_x_continuous(breaks = c(2021, 2018, 2014)) +
             scale_y_continuous(labels = label_percent(),
                                breaks = pretty_breaks(4)) +
@@ -459,7 +572,8 @@ server <- function(input, output) {
             labs(x = NULL,
                  y = NULL,
                  title = str_c("Hvernig gengur sveitarfélögum að standast viðmið Eftirlitsnefndar með fjármálum sveitarfélaga (", input$hluti_vidmid,")?"),
-                 subtitle = "Brotin lína er viðmið og er reiknuð út frá nettóskuldum sem hlutfall af tekjum")
+                 subtitle = "Brotin lína er viðmið og er reiknuð út frá nettóskuldum sem hlutfall af tekjum",
+                 caption = "Mynd var fengin frá: https://bggj.shinyapps.io/maelabord_arsreikninga_sveitarfelaga/")
         
         
         p
