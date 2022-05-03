@@ -5,9 +5,9 @@ account: bgautijonsson
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 6192503
-bundleId: 5859612
+bundleId: 5864007
 url: https://bggj.shinyapps.io/maelabord_arsreikninga_sveitarfelaga/
-when: 1651484788.34051
-lastSyncTime: 1651484788.34052
+when: 1651575901.53288
+lastSyncTime: 1651575901.53289
 asMultiple: FALSE
 asStatic: FALSE

@@ -56,8 +56,12 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                           "Handbært fé per íbúi",
                                           "Jöfnunarsjóðsframlög per íbúi",
                                           "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum",
+                                          "Launa- og launatengd gjöld per íbúi",
+                                          "Launa- og launatengd gjöld sem hlutfall af útgjöldum",
                                           "Nettó jöfnunarsjóðsframlög per íbúi",
+                                          "Nettóskuldir sem hlutfall af tekjum",
                                           "Rekstrarniðurstaða sem hlutfall af tekjum",
+                                          "Rekstrarniðurstaða undanfarinna 3 ára  sem hlutfall af tekjum",
                                           "Skuldir per íbúi", 
                                           "Skuldir sem hlutfall af tekjum",
                                           "Skuldaaukning",
@@ -136,7 +140,10 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                           "Handbært fé per íbúi",
                                           "Jöfnunarsjóðsframlög per íbúi",
                                           "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum",
+                                          "Launa- og launatengd gjöld per íbúi",
+                                          "Launa- og launatengd gjöld sem hlutfall af útgjöldum",
                                           "Nettó jöfnunarsjóðsframlög per íbúi",
+                                          "Nettóskuldir sem hlutfall af tekjum",
                                           "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)",
                                           "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)",
                                           "Skuldir per íbúi", 
@@ -170,7 +177,7 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                   h3("Tölur miða við síðasta aðgengilega ársreikning sveitarfélags"),
                                   br(" "),
                                   tabsetPanel(
-                                      tabPanel("Myndrit", plotOutput("dreifing_plot", height = 1000, width = "100%")),
+                                      tabPanel("Myndrit", plotOutput("dreifing_plot", height = 1000)),
                                       tabPanel("Tafla", DTOutput("dreifing_tafla"))
                                   )
                               )
@@ -215,7 +222,7 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                               
                               
                               mainPanel(
-                                  plotOutput("plot_vidmid", height = 800, width = "100%")
+                                  plotOutput("plot_vidmid", height = 1000, width = "100%")
                               )
                           )
                           
@@ -236,8 +243,12 @@ server <- function(input, output) {
             "Handbært fé per íbúi" = "handbaert_fe_per_ibui",
             "Jöfnunarsjóðsframlög per íbúi" = "jofnunarsjodur_a_ibua",
             "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = "hlutf_jofnunarsjods_skottum",
+            "Launa- og launatengd gjöld per íbúi" = "launagjold_per_ibui",
+            "Launa- og launatengd gjöld sem hlutfall af útgjöldum" = "launagjold_hlutf_gjold",
             "Nettó jöfnunarsjóðsframlög per íbúi" = "netto_jofnunarsjod_per_ibui",
+            "Nettóskuldir sem hlutfall af tekjum" = "nettoskuldir_hlutf_tekjur",
             "Rekstrarniðurstaða sem hlutfall af tekjum" = "rekstrarnidurstada_hlutf",
+            "Rekstrarniðurstaða undanfarinna 3 ára  sem hlutfall af tekjum" = "rekstur_3_ar_hlutf_tekjur",
             "Skuldir per íbúi"  = "skuldir_per_ibui",
             "Skuldir sem hlutfall af tekjum" = "skuldir_hlutf_tekjur",
             "Skuldaaukning" = "skuldaaukning",
@@ -252,11 +263,17 @@ server <- function(input, output) {
                                         function(data) data,  
                                         function(data) data |> mutate(y = y / visitala_2021)),
             "Skuldaaukning" = ifelse(input$verdlag == "Verðlag hvers árs",
-                                     function(data) data |> group_by(sveitarfelag) |> mutate(y = (y + 1) / (y[ar == input$ar_fra] + 1) - 1) |> ungroup(),
-                                     function(data) data |> group_by(sveitarfelag) |> mutate(y = ((y + 1) / visitala_2021) / ((y[ar == input$ar_fra] + 1) / visitala_2021[ar == input$ar_fra]) - 1) |> ungroup()),
+                                     function(data) data |> group_by(sveitarfelag) |> mutate(y = (y) / (y[ar == input$ar_fra]) - 1) |> ungroup(),
+                                     function(data) data |> group_by(sveitarfelag) |> mutate(y = ((y) / visitala_2021) / ((y[ar == input$ar_fra]) / visitala_2021[ar == input$ar_fra]) - 1) |> ungroup()),
             "Handbært fé per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
                                             function(data) data,  
                                             function(data) data |> mutate(y = y / visitala_2021)),
+            "Jöfnunarsjóðsframlög per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
+                                                     function(data) data,  
+                                                     function(data) data |> mutate(y = y / visitala_2021)),
+            "Launa- og launatengd gjöld per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
+                                                           function(data) data,  
+                                                           function(data) data |> mutate(y = y / visitala_2021)),
             "Nettó jöfnunarsjóðsframlög per íbúi" = ifelse(input$verdlag == "Verðlag hvers árs", 
                                                            function(data) data,  
                                                            function(data) data |> mutate(y = y / visitala_2021)),
@@ -296,18 +313,20 @@ server <- function(input, output) {
             "Framlegð sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), expand = expansion()),
             "Handbært fé per íbúi" = scale_y_continuous(label = label_number(suffix = " kr"), 
                                                         expand = expansion(mult = 0.005),
-                                                        breaks = c(0, 1e1, 1e2, 1e3, 3e3, 1e4, 3e4, 1e5, 3e5, 1e6, 3e6),
-                                                        limits = c(NA, NA),
-                                                        trans = pseudo_log_trans()),
+                                                        limits = c(NA, NA)),
             "Jöfnunarsjóðsframlög per íbúi" = scale_y_continuous(label = label_number(suffix = " kr"), limits = c(0, NA), expand = expansion()),
             "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = scale_y_continuous(labels = label_percent(), limits = c(0, NA), expand = expansion()),
+            "Launa- og launatengd gjöld per íbúi" = scale_y_continuous(label = label_number(suffix = " kr"), limits = c(0, NA)),
+            "Launa- og launatengd gjöld sem hlutfall af útgjöldum" = scale_y_continuous(labels = label_percent(), limits = c(NA, NA)),
+            "Nettóskuldir sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), limits = c(NA, NA)),
             "Nettó jöfnunarsjóðsframlög per íbúi" = scale_y_continuous(label = label_number(suffix = " kr")),
             "Rekstrarniðurstaða sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), expand = expansion()),
+            "Rekstrarniðurstaða undanfarinna 3 ára  sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), expand = expansion()),
             "Skuldir per íbúi" = scale_y_continuous(label = label_number(suffix = " kr"), expand = expansion()),
             "Skuldir sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), expand = expansion()),
             "Skuldaaukning" = scale_y_continuous(labels = label_percent(), expand = expansion()),
             "Skuldahlutfall" = scale_y_continuous(labels = label_percent(), breaks = seq(0, 1, by = 0.25), expand = expansion()),
-            "Útsvar og fasteignaskattur per íbúi" =  scale_y_continuous(label = label_number(suffix = " kr"), limits = c(0, NA), expand = expansion()),
+            "Útsvar og fasteignaskattur per íbúi" =  scale_y_continuous(label = label_number(suffix = " kr"), limits = c(NA, NA), expand = expansion(mult = 0.01)),
             "Veltufé frá rekstri sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), breaks = pretty_breaks(6),
                                                                               limits= c(0, NA), expand = expansion()),
             "Veltufjárhlutfall" = scale_y_continuous(labels = label_percent(), expand = expansion())
@@ -339,9 +358,11 @@ server <- function(input, output) {
         subtitles <- list(
             "Eiginfjárhlutfall" = "Eiginfjárhlutfall (100% - skuldahlutfall) sýnir hlutfall eigna sem er fjármagnað með hagnaði og hlutafé (restin eru skuldasöfnun).\nHér þýðir 100% að skuldir séu engar og 0% að eigin eignir eru engar.",
             "Framlegð sem hlutfall af tekjum" = "Framlegð er reglulegar tekjur mínus gjöld að frádregnum rekstrargjöldum",
-            "Handbært fé per íbúi" = "Handbært fé er það fé sem sveitarfélög eiga eftir þegar búið er að greiða skuldir og skuldbindingar.\nAthugið að myndin er á lograkvarða (fjarlægð milli 1.000, 10.000 og 100.000 er sú sama)",
+            "Handbært fé per íbúi" = "Handbært fé er það fé sem sveitarfélög eiga eftir þegar búið er að greiða skuldir og skuldbindingar.",
             "Jöfnunarsjóðsframlög per íbúi" = "Peningamagn sem sveitarfélag fær frá jöfnunarsjóð deilt með íbúafjölda.",
+            "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = "Peningamagn sem sveitarfélag fær frá jöfnunarsjóð deilt með heildartekjum frá útsvari og fasteignasköttum.",
             "Nettó jöfnunarsjóðsframlög per íbúi" = "Framlög frá jöfnunarsjóði að frádregnum útgjöldum til jöfnunarsjóðs deilt með íbúafjölda sveitarfélags",
+            "Nettóskuldir sem hlutfall af tekjum" = "Nettóskuldir eru heildarskuldir að frádregnum peningalegum eignum án eigin fyrirtækja og eru notaðar í viðmiðum eftirlitsnefndar með fjármálum sveitarfélaga.",
             "Skuldahlutfall" = "Skuldahlutfall sýnir hve stór hluti heildareigna er fjármagnaður með lánum.\nHér þýðir 0% að skuldir séu engar og 100% að eigin eignir eru engar.\nOft er sama orðið notað fyrir skuldir sveitarfélaga sem hlutfall af tekjum, en það á ekki við hér.",
             "Veltufjárhlutfall" = "Veltufjárhlutfall er hlutfall skammtímaskulda deilt upp í eignir sem er hægt að nota í að borga í skammtímaskuldir"
         )
@@ -350,7 +371,9 @@ server <- function(input, output) {
             "Eiginfjárhlutfall" = c(0, 1),
             "Framlegð sem hlutfall af tekjum" = 0,
             "Nettó jöfnunarsjóðsframlög per íbúi" = 0,
+            "Nettóskuldir sem hlutfall af tekjum" = 1,
             "Rekstrarniðurstaða sem hlutfall af tekjum" = 0,
+            "Rekstrarniðurstaða undanfarinna 3 ára  sem hlutfall af tekjum" = 0,
             "Skuldir per íbúi" = NULL,
             "Skuldir sem hlutfall af tekjum" = 1,
             "Skuldaaukning" = 0,
@@ -401,7 +424,10 @@ server <- function(input, output) {
             "Handbært fé per íbúi" = 0,
             "Jöfnunarsjóðsframlög per íbúi" = 0,
             "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = 2,
+            "Launa- og launatengd gjöld per íbúi" = 0,
+            "Launa- og launatengd gjöld sem hlutfall af útgjöldum" = 2,
             "Nettó jöfnunarsjóðsframlög per íbúi" = 0,
+            "Nettóskuldir sem hlutfall af tekjum" = 2,
             "Rekstrarniðurstaða sem hlutfall af tekjum" = 2,
             "Skuldir per íbúi"  = 0,
             "Skuldir sem hlutfall af tekjum" = 2,
@@ -466,7 +492,10 @@ server <- function(input, output) {
             "Handbært fé per íbúi" = "handbaert_fe_per_ibui",
             "Jöfnunarsjóðsframlög per íbúi" = "jofnunarsjodur_a_ibua",
             "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = "hlutf_jofnunarsjods_skottum",
+            "Launa- og launatengd gjöld per íbúi" = "launagjold_per_ibui",
+            "Launa- og launatengd gjöld sem hlutfall af útgjöldum" = "launagjold_hlutf_gjold",
             "Nettó jöfnunarsjóðsframlög per íbúi" = "netto_jofnunarsjod_per_ibui",
+            "Nettóskuldir sem hlutfall af tekjum" = "nettoskuldir_hlutf_tekjur",
             "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)" = "rekstrarnidurstada_per_ibui_kjortimabil",
             "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)" = "rekstrarnidurstada_hlutf_kjortimabil",
             "Útsvar og fasteignaskattur per íbúi" = "skattur_a_ibua",
@@ -516,7 +545,10 @@ server <- function(input, output) {
                                                         breaks = c(1e1, 1e2, 1e3, 1e4, 1e5, 1e6)),
             "Jöfnunarsjóðsframlög per íbúi" = scale_x_continuous(label = label_number(suffix = " kr"), limits = c(0, NA), expand = expansion()),
             "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = scale_x_continuous(labels = label_percent(), limits = c(0, NA), expand = expansion()),
+            "Launa- og launatengd gjöld per íbúi" = scale_x_continuous(label = label_number(suffix = " kr"), limits = c(0, NA), expand = expansion()),
+            "Launa- og launatengd gjöld sem hlutfall af útgjöldum" = scale_x_continuous(labels = label_percent(), limits = c(0, NA), expand = expansion()),
             "Nettó jöfnunarsjóðsframlög per íbúi" = scale_x_continuous(label = label_number(suffix = " kr")),
+            "Nettóskuldir sem hlutfall af tekjum" = scale_x_continuous(labels = label_percent(), limits = c(NA, NA), expand = expansion(mult = 0.01)),
             "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)" = scale_x_continuous(label = label_number(suffix = " kr")),
             "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)" = scale_x_continuous(labels = label_percent()),
             "Skuldir per íbúi" = scale_x_continuous(label = label_number(suffix = " kr")),
@@ -533,6 +565,7 @@ server <- function(input, output) {
             "Framlegð sem hlutfall af tekjum" = "Framlegð er reglulegar tekjur að frádregnum rekstrargjöldum",
             "Handbært fé per íbúi" = "Handbært fé er það fé sem sveitarfélög eiga eftir þegar búið er að greiða skuldir og skuldbindingar",
             "Nettó jöfnunarsjóðsframlög per íbúi" = "Framlög frá jöfnunarsjóði að frádregnum útgjöldum til jöfnunarsjóðs deilt með íbúafjölda sveitarfélags",
+            "Nettóskuldir sem hlutfall af tekjum" = "Nettóskuldir eru heildarskuldir að frádregnum peningalegum eignum án eigin fyrirtækja og eru notaðar í viðmiðum eftirlitsnefndar með fjármálum sveitarfélaga.",
             "Skuldahlutfall" = "Skuldahlutfall sýnir hve stór hluti heildareigna er fjármagnaður með lánum.\nHér þýðir 0% að skuldir séu engar og 100% að eigin eignir eru engar.\nOft er sama orðið notað fyrir skuldir sveitarfélaga sem hlutfall af tekjum, en það á ekki við hér.",
             "Veltufjárhlutfall" = "Veltufjárhlutfall er hlutfall skammtímaskulda deilt upp í eignir sem er hægt að nota í að borga í skammtímaskuldir",
             "Skuldaaukning á kjörtímabili (leiðrétt fyrir verðbólgu)" = "Skuldir eru leiðréttar fyrir vísitölu neysluverðs áður en aukningin er reiknuð"
@@ -553,7 +586,10 @@ server <- function(input, output) {
             "Handbært fé per íbúi" = 0,
             "Jöfnunarsjóðsframlög per íbúi" = 0,
             "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = 0,
+            "Launa- og launatengd gjöld per íbúi" = 0,
+            "Launa- og launatengd gjöld sem hlutfall af útgjöldum" = 0,
             "Nettó jöfnunarsjóðsframlög per íbúi" = 0,
+            "Nettóskuldir sem hlutfall af tekjum" = 1,
             "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)" = 0,
             "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)" = 0,
             "Skuldir sem hlutfall af tekjum" = 1,
@@ -572,7 +608,10 @@ server <- function(input, output) {
             "Handbært fé per íbúi" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Jöfnunarsjóðsframlög per íbúi" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
+            "Launa- og launatengd gjöld per íbúi" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
+            "Launa- og launatengd gjöld sem hlutfall af útgjöldum" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Nettó jöfnunarsjóðsframlög per íbúi" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
+            "Nettóskuldir sem hlutfall af tekjum" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
             "Skuldir per íbúi" = geom_segment(aes(xend = vlines[[input$y_var_distribution]], yend = sveitarfelag, col = factor(my_colour)), size = 0.3),
@@ -589,6 +628,7 @@ server <- function(input, output) {
         
         coords <- list(
             "Eiginfjárhlutfall" = coord_cartesian(xlim = c(pmin(0, min(plot_dat$y)), pmax(1, max(plot_dat$y)))),
+            "Nettóskuldir sem hlutfall af tekjum" = coord_cartesian(xlim = c(0, NA)),
             "Skuldahlutfall" = coord_cartesian(xlim = c(pmin(0, min(plot_dat$y)), pmax(1, max(plot_dat$y)))),
             "Veltufjárhlutfall" = coord_cartesian(xlim = c(0, 3))
         )
@@ -642,7 +682,10 @@ server <- function(input, output) {
             "Handbært fé per íbúi" = 0,
             "Jöfnunarsjóðsframlög per íbúi" = 0,
             "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = 2,
+            "Launa- og launatengd gjöld per íbúi" = 0,
+            "Launa- og launatengd gjöld sem hlutfall af útgjöldum" = 2,
             "Nettó jöfnunarsjóðsframlög per íbúi" = 0,
+            "Nettóskuldir sem hlutfall af tekjum" = 2,
             "Rekstrarniðurstaða per íbúi (kjörtímabil í heild)" = 0,
             "Rekstrarniðurstaða sem hlutfall af tekjum (kjörtímabil í heild)" = 2,
             "Útsvar og fasteignaskattur per íbúi" = 0,
@@ -706,6 +749,15 @@ server <- function(input, output) {
     
     my_plot_vidmid <- eventReactive(input$goButton_vidmid, {
         
+        fjarf_skuldir_function <- function(x) {
+            case_when(
+                x <= 1.5 ~ 0.05,
+                x < 2 ~ (x - 1.5)/0.5 * 0.025 + (2 - x)/0.5 * 0.05,
+                x <= 2.5 ~ (x - 2)/0.5 * 0.005 + (2.5 - x)/0.5 * 0.025,
+                TRUE ~ 0.005
+            )
+        }
+        
         
         plot_dat <- d |> 
             filter(ar >= 2010,
@@ -713,7 +765,7 @@ server <- function(input, output) {
                    hluti %in% input$hluti_vidmid) |> 
             select(sveitarfelag, ar, 
                    nettoskuldir_obs = nettoskuldir_hlutf_tekjur, 
-                   rekstrarnidurstada_obs = rekstrarnidurstada_hlutf, 
+                   rekstrarnidurstada_obs = rekstur_3_ar_hlutf_tekjur, 
                    framlegd_obs = framlegd_hlutf, 
                    veltufe_obs = veltufe_hlutf_tekjur,
                    veltufjarhlutfall_obs = veltufjarhlutfall) |> 
@@ -721,18 +773,19 @@ server <- function(input, output) {
                    veltufe_vidmid = nettoskuldir_obs/20,
                    rekstrarnidurstada_vidmid = 0,
                    veltufjarhlutfall_vidmid = 1,
-                   nettoskuldir_vidmid = 1,
-            ) |> 
+                   nettoskuldir_vidmid = 1) |> 
             pivot_longer(c(-sveitarfelag, -ar), names_to = c("name", "type"), values_to = "value", names_sep = "_") |> 
             pivot_wider(names_from = type, values_from  = value) |> 
             mutate(diff = obs - vidmid,
-                   colour = obs >= vidmid,
+                   diff = ifelse(name == "fjarfhlutskuldir", -diff, diff),
+                   colour = diff > 0,
                    name = fct_recode(name,
                                      "Framlegðarhlutfall" = "framlegd",
-                                     "Rekstrarniðurstaða" = "rekstrarnidurstada",
+                                     "Rekstrarniðurstaða\n(síðustu 3 ára)" = "rekstrarnidurstada",
                                      "Veltufé frá rekstri\n(hlutfall af tekjum)" = "veltufe",
                                      "Nettóskuldir\n(hlutfall af tekjum)" = "nettoskuldir",
-                                     "Veltufjárhlutfall" = "veltufjarhlutfall") |> 
+                                     "Veltufjárhlutfall" = "veltufjarhlutfall",
+                                     "Fjárfestingar og ný\nlangtímalán\n(hlutfall af skuldum)" = "fjarfhlutskuldir") |> 
                        fct_relevel("Nettóskuldir\n(hlutfall af tekjum)")) 
         
         

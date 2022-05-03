@@ -53,7 +53,11 @@ efnahagur <- read_excel("net-efnahagsreikningur.xlsx", skip = 4) |>
 rekstur <- read_excel("net-rekstrarreikningur.xlsx", skip = 4) |> 
     clean_names() |> 
     fill(ar, sveitarfelag, hluti) |> 
-    filter(tegund2 %in% c("Gjöld Total", "Tekjur Total") | tegund %in% c("Afskriftir", "Fjármagnsliðir", "Framlag Jöfnunarsjóðs", "Skatttekjur án Jöfnunarsjóðs")) |> 
+    filter(tegund2 %in% c("Gjöld Total", "Tekjur Total") | tegund %in% c("Afskriftir", 
+                                                                         "Fjármagnsliðir",
+                                                                         "Framlag Jöfnunarsjóðs", 
+                                                                         "Skatttekjur án Jöfnunarsjóðs",
+                                                                         "Laun og launatengd gjöld")) |> 
     mutate(tegund2 = ifelse(is.na(tegund2), tegund, tegund2) |> str_replace(" Total", "")) |> 
     select(-tegund) |> 
     mutate(ar = parse_number(ar),
@@ -65,7 +69,9 @@ sjodsstreymi <- read_excel("net-sjodsstreymi.xlsx", skip = 4) |>
     fill(ar, sveitarfelag, hluti, tegund2) |> 
     mutate(ar = parse_number(ar),
            sveitarfelag = str_sub(sveitarfelag, start = 6)) |> 
-    filter(tegund2 == "Veltufé frá rekstri Total" | tegund %in% c("Afborganir langtímalána", "Aðrar fjármögnunarhreyfingar")) |>
+    filter(tegund2 %in% c("Veltufé frá rekstri Total", "Fjárfestingarhreyfingar Total") | tegund %in% c("Afborganir langtímalána",
+                                                                                                        "Aðrar fjármögnunarhreyfingar",
+                                                                                                        "Tekin ný langtímalán")) |>
     mutate(tegund2 = ifelse(is.na(tegund), tegund2, tegund) |> str_replace(" Total", "")) |> 
     select(-tegund)
 
@@ -115,6 +121,8 @@ d <- efnahagur |>
            veltufjarmunir = "Veltufjármunir", skammtimakrofur_eigin_fyrirtaeki = "Skammtímakröfur á eigin fyrirtæki",
            handbaert_fe = "Aðrir veltufjármunir",
            skammtimaskuldir = "Skammtímaskuldir", 
+           fjarfestingarhreyfingar = "Fjárfestingarhreyfingar", nyjar_langtimaskuldir = "Tekin ný langtímalán",
+           launagjold = "Laun og launatengd gjöld",
            veltufe = "Veltufé frá rekstri") |> 
     bind_rows(
         gogn_2021
@@ -157,6 +165,10 @@ d <- d |>
            utgjold_jofnunarsjod = (0.0077 + 0.0099) * tekjur,
            netto_jofnunarsjod = framlag_jofnunarsjods - utgjold_jofnunarsjod,
            netto_jofnunarsjod_per_ibui = netto_jofnunarsjod / mannfjoldi,
+           nyjar_fjarfestinga_skulda_hreyfingar = fjarfestingarhreyfingar + nyjar_langtimaskuldir,
+           nyjar_fjarfestinga_skulda_hreyfingar_hlutf_skuldir = nyjar_fjarfestinga_skulda_hreyfingar / heildarskuldir,
+           launagjold_per_ibui = launagjold / mannfjoldi,
+           launagjold_hlutf_gjold = launagjold / gjold,
            hluti = fct_recode(hluti,
                               "A-hluti" = "A_hluti",
                               "A og B-hluti" = "A_og_B_hluti")) |> 
@@ -167,6 +179,7 @@ d <- d |>
     group_by(ar) |> 
     mutate(hlutf_jofnunarsjod_utgjold = utgjold_jofnunarsjod / sum(utgjold_jofnunarsjod)) |> 
     ungroup() |> 
+    arrange(ar, sveitarfelag, hluti) |> 
     group_by(sveitarfelag, hluti) |> 
     mutate(skuldaaukning_2021 = ifelse(sveitarfelag != "Múlaþing" & ar >= 2018, (heildarskuldir / visitala_2021) / (heildarskuldir[ar == 2018] / visitala_2021[ar == 2018]) - 1, NA),
            skuldaaukning = heildarskuldir / heildarskuldir[ar == max(ar)],
@@ -174,12 +187,13 @@ d <- d |>
            rekstrarnidurstada_kjortimabil = sum(rekstrarnidurstada * (ar >= 2018)),
            framlegd_kjortimabil = sum(framlegd * (ar >= 2018)),
            tekjur_kjortimabil = sum(tekjur * (ar >= 2018)),
+           rekstur_3_ar_hlutf_tekjur = rekstrarnidurstada_hlutf + lag(rekstrarnidurstada_hlutf, 1) + lag(rekstrarnidurstada_hlutf, 2),
            rekstrarnidurstada_hlutf_kjortimabil = rekstrarnidurstada_kjortimabil / tekjur_kjortimabil,
            rekstrarnidurstada_per_ibui_kjortimabil = rekstrarnidurstada_kjortimabil / mean(mannfjoldi[ar %in% 2018:2021]),
            framlegd_hlutf_kjortimabil = framlegd_kjortimabil / tekjur_kjortimabil,
            framlegd_per_ibui_kjortimabil = framlegd_kjortimabil / mean(mannfjoldi[ar %in% 2018:2021])) |> 
     ungroup() 
-    
+
 
 
 
