@@ -98,7 +98,7 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                   br(" "),
                                   h5("Höfundur:"),
                                   p("Brynjólfur Gauti Guðrúnar Jónsson"),
-                                  HTML("<a href='https://bggj.shinyapps.io/maelabord_arsreikninga_sveitarfelaga/'> Kóði og gögn </a>")
+                                  HTML("<a href='https://github.com/bgautijonsson/maelabord_arsreikninga_sveitarfelaga'> Kóði og gögn </a>")
                               ),
                               
                               mainPanel(
@@ -168,7 +168,7 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                   br(" "),
                                   h5("Höfundur"),
                                   p("Brynjólfur Gauti Guðrúnar Jónsson"),
-                                  HTML("<a href='https://bggj.shinyapps.io/maelabord_arsreikninga_sveitarfelaga/'> Kóði og gögn </a>")
+                                  HTML("<a href='https://github.com/bgautijonsson/maelabord_arsreikninga_sveitarfelaga'> Kóði og gögn </a>")
                                   
                               ),
                               
@@ -216,7 +216,7 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                   br(" "),
                                   h5("Höfundur"),
                                   p("Brynjólfur Gauti Guðrúnar Jónsson"),
-                                  HTML("<a href='https://bggj.shinyapps.io/maelabord_arsreikninga_sveitarfelaga/'> Kóði og gögn </a>")
+                                  HTML("<a href='https://github.com/bgautijonsson/maelabord_arsreikninga_sveitarfelaga'> Kóði og gögn </a>")
                                   
                               ),
                               
