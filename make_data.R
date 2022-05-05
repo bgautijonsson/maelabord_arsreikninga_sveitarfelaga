@@ -113,7 +113,13 @@ d <- efnahagur |>
     ) |> 
     # filter(sveitarfelag %in% gogn_2021$sveitarfelag) |> 
     mutate(heildarskuldir = `Skuldbindingar` + `Langtímaskuldir` + `Skammtímaskuldir`,
-           eignir = `Varanlegir rekstrarfjármunir` + `Áhættufjármunir og langtímakröfur` + `Veltufjármunir`) |> 
+           eignir = `Varanlegir rekstrarfjármunir` + `Áhættufjármunir og langtímakröfur` + `Veltufjármunir`,
+           sveitarfelag = case_when(sveitarfelag %in% c("Múlaþing", "Fljótsdalshérað", "Seyðisfjarðarkaupstaður",
+                                                        "Borgarfjarðarhreppur", "Djúpavogshreppur") ~ "Múlaþing",
+                                    sveitarfelag %in% c("Sandgerðisbær", "Sveitarfélagið Garður") ~ "Suðurnesjabær",
+                                    sveitarfelag %in% c("Breiðdalshreppur", "Fjarðabyggð") ~ "Fjarðabyggð",
+                                    sveitarfelag %in% c("Sveitarfélagið Álftanes", "Garðabær") ~ "Garðabær",
+                                    TRUE ~ sveitarfelag)) |> 
     select(ar, sveitarfelag, hluti, heildarskuldir, eignir,
            tekjur = "Tekjur", skatttekjur_an_jofnundarsjóðs = "Skatttekjur án Jöfnunarsjóðs", framlag_jofnunarsjods = "Framlag Jöfnunarsjóðs",
            gjold = "Gjöld", afskriftir = "Afskriftir", fjarmagnslidir = "Fjármagnsliðir",
@@ -124,6 +130,9 @@ d <- efnahagur |>
            fjarfestingarhreyfingar = "Fjárfestingarhreyfingar", nyjar_langtimaskuldir = "Tekin ný langtímalán",
            launagjold = "Laun og launatengd gjöld",
            veltufe = "Veltufé frá rekstri") |> 
+    group_by(sveitarfelag, ar, hluti) |> 
+    summarise_at(vars(heildarskuldir:veltufe), sum) |> 
+    ungroup() |> 
     bind_rows(
         gogn_2021
     ) |> 
@@ -148,7 +157,7 @@ d <- d |>
            skuldir_hlutf_tekjur = heildarskuldir / tekjur,
            nettoskuldir_hlutf_tekjur = nettoskuldir / tekjur,
            veltufjarhlutfall = veltufjarmunir / skammtimaskuldir,
-           eignahlutf = eignir / heildarskuldir,
+           eignahlutf = eigid_fe / (eigid_fe + heildarskuldir),
            rekstrarnidurstada = tekjur - gjold + fjarmagnslidir,
            rekstrarnidurstada_hlutf = rekstrarnidurstada / tekjur,
            framlegd = rekstrarnidurstada + afskriftir,
@@ -169,6 +178,7 @@ d <- d |>
            nyjar_fjarfestinga_skulda_hreyfingar_hlutf_skuldir = nyjar_fjarfestinga_skulda_hreyfingar / heildarskuldir,
            launagjold_per_ibui = launagjold / mannfjoldi,
            launagjold_hlutf_gjold = launagjold / gjold,
+           timi_borga_skuldir = nettoskuldir / veltufe,
            hluti = fct_recode(hluti,
                               "A-hluti" = "A_hluti",
                               "A og B-hluti" = "A_og_B_hluti")) |> 
@@ -188,6 +198,8 @@ d <- d |>
            framlegd_kjortimabil = sum(framlegd * (ar >= 2018)),
            tekjur_kjortimabil = sum(tekjur * (ar >= 2018)),
            rekstur_3_ar_hlutf_tekjur = rekstrarnidurstada_hlutf + lag(rekstrarnidurstada_hlutf, 1) + lag(rekstrarnidurstada_hlutf, 2),
+           veltufe_4ar = (veltufe + lag(veltufe, 1) + lag(veltufe, 2) + lag(veltufe, 3) + lag(veltufe, 4)) / 4,
+           timi_borga_skuldir_4ar = nettoskuldir / veltufe_4ar,
            rekstrarnidurstada_hlutf_kjortimabil = rekstrarnidurstada_kjortimabil / tekjur_kjortimabil,
            rekstrarnidurstada_per_ibui_kjortimabil = rekstrarnidurstada_kjortimabil / mean(mannfjoldi[ar %in% 2018:2021]),
            framlegd_hlutf_kjortimabil = framlegd_kjortimabil / tekjur_kjortimabil,

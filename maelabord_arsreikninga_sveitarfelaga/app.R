@@ -238,6 +238,7 @@ server <- function(input, output) {
         
         
         y_vars <- list(
+            "Árafjöldi til niðurgreiðslu nettó skulda" = "timi_borga_skuldir",
             "Eiginfjárhlutfall" = "eiginfjarhlutfall",
             "Framlegð sem hlutfall af tekjum" = "framlegd_hlutf",
             "Handbært fé per íbúi" = "handbaert_fe_per_ibui",
@@ -309,6 +310,7 @@ server <- function(input, output) {
         
         
         y_scales <- list(
+            "Árafjöldi til niðurgreiðslu nettó skulda" = scale_y_continuous(label = label_number(suffix = " ár"), limits = c(0, NA), expand = expansion()),
             "Eiginfjárhlutfall" = scale_y_continuous(labels = label_percent(), breaks = seq(0, 1, by = 0.25), expand = expansion()),
             "Framlegð sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), expand = expansion()),
             "Handbært fé per íbúi" = scale_y_continuous(label = label_number(suffix = " kr"), 
@@ -333,8 +335,8 @@ server <- function(input, output) {
         )
         
         x_scales_year <- list(
-            "2002" = scale_x_continuous(breaks = c(2002, 2005, 2008, 2010, 2015, 2021)),
-            "2006" = scale_x_continuous(breaks = c(2002, 2006, 2008, 2010, 2015, 2021)),
+            "2002" = scale_x_continuous(breaks = c(2002:2021)),
+            "2006" = scale_x_continuous(breaks = c(2002:2021)),
             "2010" = scale_x_continuous(breaks = c(2010:2021)),
             "2014" = scale_x_continuous(breaks = c(2014:2021)),
             "2018" = scale_x_continuous(breaks = c(2018:2021))
@@ -356,6 +358,7 @@ server <- function(input, output) {
         
         
         subtitles <- list(
+            "Árafjöldi til niðurgreiðslu nettó skulda" = "Nettóskuldir deilt með veltufé frá rekstri. Þessi tala getur sveiflast mikið eftir því hversu mikið veltufé er á hverju ári.",
             "Eiginfjárhlutfall" = "Eiginfjárhlutfall (100% - skuldahlutfall) sýnir hlutfall eigna sem er fjármagnað með hagnaði og hlutafé (restin eru skuldasöfnun).\nHér þýðir 100% að skuldir séu engar og 0% að eigin eignir eru engar.",
             "Framlegð sem hlutfall af tekjum" = "Framlegð er reglulegar tekjur mínus gjöld að frádregnum rekstrargjöldum",
             "Handbært fé per íbúi" = "Handbært fé er það fé sem sveitarfélög eiga eftir þegar búið er að greiða skuldir og skuldbindingar.",
@@ -388,6 +391,7 @@ server <- function(input, output) {
         
         
         coords <- list(
+            "Árafjöldi til niðurgreiðslu nettó skulda" = coord_cartesian(ylim = c(0, 40)),
             "Eiginfjárhlutfall" = coord_cartesian(ylim = c(pmin(0, min(plot_dat$y)), pmax(1, max(plot_dat$y)))),
             "Skuldahlutfall" = coord_cartesian(ylim = c(pmin(0, min(plot_dat$y)), pmax(1, max(plot_dat$y)))),
             "Veltufjárhlutfall" = coord_cartesian(ylim = c(0, 3))
@@ -419,23 +423,23 @@ server <- function(input, output) {
         
         
         my_digits <- list(
-            "Eiginfjárhlutfall" = 2,
-            "Framlegð sem hlutfall af tekjum" = 2,
+            "Eiginfjárhlutfall" = 3,
+            "Framlegð sem hlutfall af tekjum" = 3,
             "Handbært fé per íbúi" = 0,
             "Jöfnunarsjóðsframlög per íbúi" = 0,
-            "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = 2,
+            "Jöfnunarsjóðsframlög sem hlutfall af skatttekjum" = 3,
             "Launa- og launatengd gjöld per íbúi" = 0,
-            "Launa- og launatengd gjöld sem hlutfall af útgjöldum" = 2,
+            "Launa- og launatengd gjöld sem hlutfall af útgjöldum" = 3,
             "Nettó jöfnunarsjóðsframlög per íbúi" = 0,
-            "Nettóskuldir sem hlutfall af tekjum" = 2,
-            "Rekstrarniðurstaða sem hlutfall af tekjum" = 2,
+            "Nettóskuldir sem hlutfall af tekjum" = 3,
+            "Rekstrarniðurstaða sem hlutfall af tekjum" = 3,
             "Skuldir per íbúi"  = 0,
-            "Skuldir sem hlutfall af tekjum" = 2,
+            "Skuldir sem hlutfall af tekjum" = 3,
             "Skuldaaukning" = 3,
-            "Skuldahlutfall" = 2,
+            "Skuldahlutfall" = 3,
             "Útsvar og fasteignaskattur per íbúi" = 0,
-            "Veltufé frá rekstri sem hlutfall af tekjum" = 2,
-            "Veltufjárhlutfall" = 2
+            "Veltufé frá rekstri sem hlutfall af tekjum" = 3,
+            "Veltufjárhlutfall" = 3
         )
         
         if (is.null(my_digits[[input$y_var]])) my_digits[[input$y_var]] <- 0
@@ -777,15 +781,13 @@ server <- function(input, output) {
             pivot_longer(c(-sveitarfelag, -ar), names_to = c("name", "type"), values_to = "value", names_sep = "_") |> 
             pivot_wider(names_from = type, values_from  = value) |> 
             mutate(diff = obs - vidmid,
-                   diff = ifelse(name == "fjarfhlutskuldir", -diff, diff),
                    colour = diff > 0,
                    name = fct_recode(name,
                                      "Framlegðarhlutfall" = "framlegd",
                                      "Rekstrarniðurstaða\n(síðustu 3 ára)" = "rekstrarnidurstada",
                                      "Veltufé frá rekstri\n(hlutfall af tekjum)" = "veltufe",
                                      "Nettóskuldir\n(hlutfall af tekjum)" = "nettoskuldir",
-                                     "Veltufjárhlutfall" = "veltufjarhlutfall",
-                                     "Fjárfestingar og ný\nlangtímalán\n(hlutfall af skuldum)" = "fjarfhlutskuldir") |> 
+                                     "Veltufjárhlutfall" = "veltufjarhlutfall") |> 
                        fct_relevel("Nettóskuldir\n(hlutfall af tekjum)")) 
         
         
