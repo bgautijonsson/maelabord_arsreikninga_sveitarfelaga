@@ -330,7 +330,7 @@ server <- function(input, output) {
             "Skuldahlutfall" = scale_y_continuous(labels = label_percent(), breaks = seq(0, 1, by = 0.25), expand = expansion()),
             "Útsvar og fasteignaskattur per íbúi" =  scale_y_continuous(label = label_number(suffix = " kr"), limits = c(NA, NA), expand = expansion(mult = 0.01)),
             "Veltufé frá rekstri sem hlutfall af tekjum" = scale_y_continuous(labels = label_percent(), breaks = pretty_breaks(6),
-                                                                              limits= c(0, NA), expand = expansion()),
+                                                                              limits= c(NA, NA), expand = expansion()),
             "Veltufjárhlutfall" = scale_y_continuous(labels = label_percent(), expand = expansion())
         )
         
