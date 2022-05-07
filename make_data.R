@@ -53,8 +53,10 @@ efnahagur <- read_excel("net-efnahagsreikningur.xlsx", skip = 4) |>
 rekstur <- read_excel("net-rekstrarreikningur.xlsx", skip = 4) |> 
     clean_names() |> 
     fill(ar, sveitarfelag, hluti) |> 
-    filter(tegund2 %in% c("Gjöld Total", "Tekjur Total") | tegund %in% c("Afskriftir", 
+    filter(tegund2 %in% c("Gjöld Total", "Tekjur Total", "Rekstrarniðurstaða Total") | tegund %in% c("Afskriftir", 
+                                                                         "Breyting lífeyrisskuldbindinga",
                                                                          "Fjármagnsliðir",
+                                                                         "Óreglulegir liðir",
                                                                          "Framlag Jöfnunarsjóðs", 
                                                                          "Skatttekjur án Jöfnunarsjóðs",
                                                                          "Laun og launatengd gjöld")) |> 
@@ -122,7 +124,9 @@ d <- efnahagur |>
                                     TRUE ~ sveitarfelag)) |> 
     select(ar, sveitarfelag, hluti, heildarskuldir, eignir,
            tekjur = "Tekjur", skatttekjur_an_jofnundarsjóðs = "Skatttekjur án Jöfnunarsjóðs", framlag_jofnunarsjods = "Framlag Jöfnunarsjóðs",
-           gjold = "Gjöld", afskriftir = "Afskriftir", fjarmagnslidir = "Fjármagnsliðir",
+           gjold = "Gjöld", afskriftir = "Afskriftir", fjarmagnslidir = "Fjármagnsliðir", oreglulegir_lidir = "Óreglulegir liðir",
+           rekstrarnidurstada = "Rekstrarniðurstaða",
+           breyting_lifeyrisskuldbindinga = "Breyting lífeyrisskuldbindinga",
            eigid_fe = "Eigið fé", 
            veltufjarmunir = "Veltufjármunir", skammtimakrofur_eigin_fyrirtaeki = "Skammtímakröfur á eigin fyrirtæki",
            handbaert_fe = "Aðrir veltufjármunir",
@@ -154,13 +158,15 @@ d <- d |>
         heild
     ) |> 
     mutate(nettoskuldir = heildarskuldir - veltufjarmunir + skammtimakrofur_eigin_fyrirtaeki,
+           breyting_lifeyrisskuldbindinga_hlutf_gjoldum = breyting_lifeyrisskuldbindinga / gjold,
            skuldir_hlutf_tekjur = heildarskuldir / tekjur,
            nettoskuldir_hlutf_tekjur = nettoskuldir / tekjur,
            veltufjarhlutfall = veltufjarmunir / skammtimaskuldir,
            eignahlutf = eigid_fe / (eigid_fe + heildarskuldir),
-           rekstrarnidurstada = tekjur - gjold + fjarmagnslidir,
            rekstrarnidurstada_hlutf = rekstrarnidurstada / tekjur,
-           framlegd = rekstrarnidurstada + afskriftir,
+           rekstrarnidurstada_an_lifeyrisbreytinga = rekstrarnidurstada + breyting_lifeyrisskuldbindinga,
+           rekstrarnidurstada_an_lifeyrisbreytinga_hlutf_tekjum = rekstrarnidurstada_an_lifeyrisbreytinga / tekjur,
+           framlegd = tekjur - gjold + afskriftir,
            framlegd_hlutf = framlegd / tekjur,
            eiginfjarhlutfall = eigid_fe / eignir,
            skuldahlutfall = 1 - eiginfjarhlutfall,
@@ -210,5 +216,6 @@ d <- d |>
 
 
 
-d |> write_csv(here("maelabord_arsreikninga_sveitarfelaga", "arsreikningagogn.csv"))
+d |> 
+    write_csv(here("maelabord_arsreikninga_sveitarfelaga", "arsreikningagogn.csv"))
 

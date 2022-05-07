@@ -51,6 +51,7 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                       inputId = "y_var",
                                       label = "Myndrit",
                                       choices = c(
+                                          # "Breyting lífeyrisskuldbindinga sem hlutfall af útgjöldum",
                                           "Eiginfjárhlutfall",
                                           "Framlegð sem hlutfall af tekjum",
                                           "Handbært fé per íbúi",
@@ -60,6 +61,7 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                           "Launa- og launatengd gjöld sem hlutfall af útgjöldum",
                                           "Nettó jöfnunarsjóðsframlög per íbúi",
                                           "Nettóskuldir sem hlutfall af tekjum",
+                                          # "Rekstrarniðurstaða án breytinga í lífeyrisskuldbindingum",
                                           "Rekstrarniðurstaða sem hlutfall af tekjum",
                                           "Rekstrarniðurstaða undanfarinna 3 ára  sem hlutfall af tekjum",
                                           "Skuldir per íbúi", 
@@ -70,7 +72,7 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                           "Veltufé frá rekstri sem hlutfall af tekjum",
                                           "Veltufjárhlutfall"
                                       ),
-                                      selected = c("Skuldahlutfall")
+                                      selected = c("Nettóskuldir sem hlutfall af tekjum")
                                   ),
                                   selectInput(
                                       inputId = "ar_fra", 
@@ -239,6 +241,7 @@ server <- function(input, output) {
         
         y_vars <- list(
             "Árafjöldi til niðurgreiðslu nettó skulda" = "timi_borga_skuldir",
+            "Breyting lífeyrisskuldbindinga sem hlutfall af útgjöldum" = "breyting_lifeyrisskuldbindinga_hlutf_gjoldum",
             "Eiginfjárhlutfall" = "eiginfjarhlutfall",
             "Framlegð sem hlutfall af tekjum" = "framlegd_hlutf",
             "Handbært fé per íbúi" = "handbaert_fe_per_ibui",
@@ -248,6 +251,7 @@ server <- function(input, output) {
             "Launa- og launatengd gjöld sem hlutfall af útgjöldum" = "launagjold_hlutf_gjold",
             "Nettó jöfnunarsjóðsframlög per íbúi" = "netto_jofnunarsjod_per_ibui",
             "Nettóskuldir sem hlutfall af tekjum" = "nettoskuldir_hlutf_tekjur",
+            "Rekstrarniðurstaða án breytinga í lífeyrisskuldbindingum" = "rekstrarnidurstada_an_lifeyrisbreytinga_hlutf_tekjum",
             "Rekstrarniðurstaða sem hlutfall af tekjum" = "rekstrarnidurstada_hlutf",
             "Rekstrarniðurstaða undanfarinna 3 ára  sem hlutfall af tekjum" = "rekstur_3_ar_hlutf_tekjur",
             "Skuldir per íbúi"  = "skuldir_per_ibui",
