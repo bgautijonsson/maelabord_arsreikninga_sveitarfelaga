@@ -10,3 +10,8 @@ Fyrir árið 2021 fann ég reikninga hvers og eins sveitarfélags og stimplaði 
 
 
 Fyrir úrvinnslu tengdri viðmiðum eftirlitsnefndar með fjármálum sveitarfélaganna nota ég skilgreiningar á lykiltölum úr [Reglugerð um fjárhagsleg viðmið og eftirlit með fjármálum sveitarfélaga.](https://island.is/reglugerdir/nr/0502-2012) og fæ viðmiðin frá [ársskýrslum eftirslitsnefndar](https://www.stjornarradid.is/verkefni/sveitarstjornir-og-byggdamal/sveitarstjornarmal/fjarmal-sveitarfelaga/eftirlitsnefnd-med-fjarmalum-sveitarfelaga/)
+
+
+# Gögn
+
+Tilbúið gagnasafn er í möppunni **maelabord_arsreikninga_sveitarfelaga** undir nafninu **arsreikningagogn.csv**.
