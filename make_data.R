@@ -54,12 +54,12 @@ rekstur <- read_excel("net-rekstrarreikningur.xlsx", skip = 4) |>
     clean_names() |> 
     fill(ar, sveitarfelag, hluti) |> 
     filter(tegund2 %in% c("Gjöld Total", "Tekjur Total", "Rekstrarniðurstaða Total") | tegund %in% c("Afskriftir", 
-                                                                         "Breyting lífeyrisskuldbindinga",
-                                                                         "Fjármagnsliðir",
-                                                                         "Óreglulegir liðir",
-                                                                         "Framlag Jöfnunarsjóðs", 
-                                                                         "Skatttekjur án Jöfnunarsjóðs",
-                                                                         "Laun og launatengd gjöld")) |> 
+                                                                                                     "Breyting lífeyrisskuldbindinga",
+                                                                                                     "Fjármagnsliðir",
+                                                                                                     "Óreglulegir liðir",
+                                                                                                     "Framlag Jöfnunarsjóðs", 
+                                                                                                     "Skatttekjur án Jöfnunarsjóðs",
+                                                                                                     "Laun og launatengd gjöld")) |> 
     mutate(tegund2 = ifelse(is.na(tegund2), tegund, tegund2) |> str_replace(" Total", "")) |> 
     select(-tegund) |> 
     mutate(ar = parse_number(ar),
@@ -127,6 +127,8 @@ d <- efnahagur |>
            gjold = "Gjöld", afskriftir = "Afskriftir", fjarmagnslidir = "Fjármagnsliðir", oreglulegir_lidir = "Óreglulegir liðir",
            rekstrarnidurstada = "Rekstrarniðurstaða",
            breyting_lifeyrisskuldbindinga = "Breyting lífeyrisskuldbindinga",
+           afborganir_langtimalana = "Afborganir langtímalána",
+           adrar_fjarmognunarhreyfingar = "Aðrar fjármögnunarhreyfingar",
            eigid_fe = "Eigið fé", 
            veltufjarmunir = "Veltufjármunir", skammtimakrofur_eigin_fyrirtaeki = "Skammtímakröfur á eigin fyrirtæki",
            handbaert_fe = "Aðrir veltufjármunir",
@@ -166,7 +168,7 @@ d <- d |>
            rekstrarnidurstada_hlutf = rekstrarnidurstada / tekjur,
            rekstrarnidurstada_an_lifeyrisbreytinga = rekstrarnidurstada + breyting_lifeyrisskuldbindinga,
            rekstrarnidurstada_an_lifeyrisbreytinga_hlutf_tekjum = rekstrarnidurstada_an_lifeyrisbreytinga / tekjur,
-           framlegd = tekjur - gjold + afskriftir,
+           framlegd = tekjur - gjold + afskriftir * (ar != 2021),
            framlegd_hlutf = framlegd / tekjur,
            eiginfjarhlutfall = eigid_fe / eignir,
            skuldahlutfall = 1 - eiginfjarhlutfall,
@@ -212,9 +214,49 @@ d <- d |>
            framlegd_per_ibui_kjortimabil = framlegd_kjortimabil / mean(mannfjoldi[ar %in% 2018:2021])) |> 
     ungroup() 
 
+read_fun <- function(year) {
+    read_xlsx(str_c("rbok-", year, "-toflur.xlsx"), sheet = "Tafla 17", skip = 4) |> 
+        slice(-1) |> 
+        rename("svfn" = 1, "sveitarfelag" = 2, stodugildi = "stöðugildi") |> 
+        select(sveitarfelag, stodugildi) |> 
+        mutate(ar = year)
+}
+
+stodugildi <- map(2018:2021, read_fun) |> 
+    reduce(bind_rows)
+
+grunnskolar <- read_xlsx("grunnskolar.xlsx", sheet = "Stodugildi", skip = 5) |> 
+    janitor::clean_names() |> 
+    fill(ar) |> 
+    filter(!str_detect(ar, "Total"), !str_detect(ar, "Samtals")) |> 
+    mutate(sveitarfelag = str_sub(sveitarfelag, start = 6),
+           ar = parse_number(ar)) |> 
+    rename(stodugildi_grunnskola = total)
+
+leikskolar <- read_xlsx("leikskolar.xlsx", sheet = "Stöðugildi", skip = 5) |> 
+    janitor::clean_names() |> 
+    fill(ar) |> 
+    filter(!str_detect(ar, "Total"), !str_detect(ar, "Samtals")) |> 
+    mutate(sveitarfelag = str_sub(sveitarfelag, start = 6),
+           ar = parse_number(ar)) |> 
+    rename(stodugildi_leikskola = total)
 
 
 
+
+d <- d |> 
+    left_join(
+        stodugildi,
+        by = c("sveitarfelag", "ar")
+    ) |> 
+    left_join(
+        grunnskolar,
+        by = c("ar", "sveitarfelag")
+    ) |> 
+    left_join(
+        leikskolar,
+        by = c("ar", "sveitarfelag")
+    )
 
 d |> 
     write_csv(here("maelabord_arsreikninga_sveitarfelaga", "arsreikningagogn.csv"))
