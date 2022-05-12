@@ -51,6 +51,7 @@ ui <- navbarPage("Ársreikningar sveitarfélaga",
                                       inputId = "y_var",
                                       label = "Myndrit",
                                       choices = c(
+                                          "Árafjöldi til niðurgreiðslu nettó skulda",
                                           # "Breyting lífeyrisskuldbindinga sem hlutfall af útgjöldum",
                                           "Eiginfjárhlutfall",
                                           "Framlegð sem hlutfall af tekjum",
@@ -375,6 +376,7 @@ server <- function(input, output) {
         )
         
         hlines <- list(
+            "Árafjöldi til niðurgreiðslu nettó skulda" = 20,
             "Eiginfjárhlutfall" = c(0, 1),
             "Framlegð sem hlutfall af tekjum" = 0,
             "Nettó jöfnunarsjóðsframlög per íbúi" = 0,
